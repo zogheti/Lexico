@@ -25,6 +25,7 @@ const LETTERE = {
     Z: { quantità: 2, punteggio: 8 }
 };
 
+const STORAGE_NOME_GIOCATORE_KEY = "scarabeo_nome_giocatore_online";
 const VOCALI = ["A", "E", "I", "O", "U"];
 const DIFFICOLTA_VALIDE = ["facile", "medio", "difficile", "estremo"];
 const BONUS_LETTERA = {
@@ -85,9 +86,61 @@ function mostraSchermataIniziale() {
     const gameContainer = document.getElementById("game-container");
     if (startScreen) startScreen.style.display = "flex";
     if (gameContainer) gameContainer.style.display = "none";
+    caricaNomeGiocatoreIniziale();
     aggiornaStatoPulsanteCaricaMenu();
 }
 
+function getNomeGiocatoreAttuale() {
+    const startInput = document.getElementById("start-player-name");
+    const onlineInput = document.getElementById("online-player-name");
+
+    const nome = (
+        startInput?.value ||
+        onlineInput?.value ||
+        localStorage.getItem(STORAGE_NOME_GIOCATORE_KEY) ||
+        ""
+    ).trim();
+
+    if (nome) {
+        localStorage.setItem(STORAGE_NOME_GIOCATORE_KEY, nome);
+        if (startInput && !startInput.value.trim()) startInput.value = nome;
+        if (onlineInput && !onlineInput.value.trim()) onlineInput.value = nome;
+    }
+
+    return nome;
+}
+
+function caricaNomeGiocatoreIniziale() {
+    const input = document.getElementById("start-player-name");
+    const salvato = localStorage.getItem(STORAGE_NOME_GIOCATORE_KEY) || "";
+    if (input && salvato) {
+        input.value = salvato;
+    }
+}
+
+function validaNomePrimaDiGiocare() {
+    const input = document.getElementById("start-player-name");
+    const errorEl = document.getElementById("start-name-error");
+    const nome = getNomeGiocatoreAttuale();
+
+    if (!nome) {
+        if (errorEl) errorEl.textContent = "⚠️ Inserisci il tuo nome prima di iniziare.";
+        if (input) {
+            input.classList.add("input-error");
+            input.focus();
+        }
+        return false;
+    }
+
+    if (errorEl) errorEl.textContent = "";
+    if (input) input.classList.remove("input-error");
+
+    // Sincronizza anche l'input della lobby online se presente
+    const onlineInput = document.getElementById("online-player-name");
+    if (onlineInput) onlineInput.value = nome;
+
+    return true;
+}
 function mostraAreaDiGioco() {
     const startScreen = document.getElementById("start-screen");
     const gameContainer = document.getElementById("game-container");
@@ -311,6 +364,33 @@ function playSuonoLettera(slotIndex = 0) {
     osc.stop(now + 0.09);
 }
 
+function playSuonoCancellaTutto() {
+    if (!audioAbilitato) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const note = [460, 340, 230];
+
+    note.forEach((freq, idx) => {
+        const start = now + idx * 0.04;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, start);
+
+        gain.gain.setValueAtTime(0.001, start);
+        gain.gain.linearRampToValueAtTime(0.09, start + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.0008, start + 0.065);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(start);
+        osc.stop(start + 0.07);
+    });
+}
 function playSuonoConfermaParola() {
     if (!audioAbilitato) return;
     const ctx = getAudioContext();
@@ -583,10 +663,20 @@ function rimuoviUltimaLettera() {
         const slot = document.querySelector(`.slot[data-index='${lastIndex}']`);
         if (slot) renderizzaContenutoSlot(slot, lastIndex);
         mostraTessere();
+        playSuonoLettera(lastIndex);
     }
 
     aggiornaPunteggioLive();
-    playSuonoLettera(indexSlot);
+}
+
+function cancellaTuttaLaParola() {
+    if (parolaCostruita.every(el => el === null)) return;
+
+    parolaCostruita = new Array(MAX_SLOT).fill(null);
+    mostraSlot();
+    mostraTessere();
+    aggiornaPunteggioLive();
+    playSuonoCancellaTutto();
 }
 
 function mostraTessere() {
@@ -1219,8 +1309,10 @@ function gestisciClickTripletta(event) {
 // 6. RIEPILOGO, CLASSIFICA E PAROLE TOP
 // ==========================================
 function creaOggettoPartita(puntiTotali, livelloDifficolta) {
+    const nomeGiocatore = getNomeGiocatoreAttuale() || "Anonimo";
     return {
         id: Date.now() + Math.floor(Math.random() * 10000),
+        giocatore: nomeGiocatore,
         timestamp: new Date().toISOString(),
         data: new Date().toISOString().split("T")[0],
         punteggioTotale: puntiTotali,
@@ -1230,7 +1322,10 @@ function creaOggettoPartita(puntiTotali, livelloDifficolta) {
         difficolta: livelloDifficolta,
         dettagliRound: parolePerRound.map((paroleRound, i) => ({
             round: i + 1,
-            parole: paroleRound.map(p => ({ parola: p.parola, punti: p.punti }))
+            parole: paroleRound.map(p => ({
+                parola: p.parola,
+                punti: p.punti ?? p.punteggio ?? 0
+            }))
         }))
     };
 }
@@ -1238,17 +1333,24 @@ function creaOggettoPartita(puntiTotali, livelloDifficolta) {
 function generaHTMLDettagliRound(dettagliRound = []) {
     return dettagliRound
         .map(r => {
-            const voci = r.parole.map(p => `<li>${p.parola} - ${p.punti} punti</li>`).join("");
+            const voci = r.parole
+                .map(p => {
+                    const puntiParola = p.punti ?? p.punteggio ?? 0;
+                    return `<li>${p.parola} - ${puntiParola} punti</li>`;
+                })
+                .join("");
             return `<p><strong>Round ${r.round}:</strong></p><ul>${voci}</ul>`;
         })
         .join("");
 }
 
 function mostraRiepilogoPartita() {
+    localStorage.removeItem("statoPartita");
     salvaPartitaInClassifica(punteggioTotale, difficolta);
 
     const partita = creaOggettoPartita(punteggioTotale, difficolta);
     const riepilogoHTML = `
+        <p><strong>Giocatore:</strong> ${partita.giocatore}</p>
         <p><strong>Punti totali:</strong> ${partita.punteggioTotale}</p>
         <p><strong>Round superati:</strong> ${partita.roundSuperati}</p>
         <p><strong>Parola con punteggio più alto:</strong> ${partita.parolaTop} (${partita.puntiTop} punti)</p>
@@ -1262,10 +1364,50 @@ function mostraRiepilogoPartita() {
 }
 
 function salvaPartitaInClassifica(puntiTotali, livelloDifficolta) {
+    const nuovaPartita = creaOggettoPartita(puntiTotali, livelloDifficolta);
     let classifica = JSON.parse(localStorage.getItem("classificaPartite")) || [];
-    classifica.push(creaOggettoPartita(puntiTotali, livelloDifficolta));
+    classifica.push(nuovaPartita);
     classifica.sort((a, b) => b.punteggioTotale - a.punteggioTotale);
     localStorage.setItem("classificaPartite", JSON.stringify(classifica.slice(0, 15)));
+
+    if (typeof window.sincronizzaPartitaFirebase === "function") {
+        window.sincronizzaPartitaFirebase(nuovaPartita);
+    }
+}
+
+function salvaParolaAlta(parola, punteggio) {
+    let paroleSalvate = JSON.parse(localStorage.getItem("paroleTop")) || [];
+    const nomeGiocatore = getNomeGiocatoreAttuale() || "Anonimo";
+
+    const bonusUsati = parolaCostruita
+        .map(slot => {
+            if (!slot) return null;
+            const tessera = tessereDisponibili[slot.indiceTessera];
+            if (typeof tessera === "object" && tessera !== null) {
+                if (tessera.tipoBonus === "additivo") return `+${tessera.valore}`;
+                if (tessera.tipoBonus === "moltiplicatore") return `x${tessera.moltiplicatore}`;
+            }
+            return null;
+        })
+        .filter(Boolean);
+
+    const nuovaVoce = {
+        id: `${Date.now()}_${Math.floor(Math.random() * 100000)}`,
+        giocatore: nomeGiocatore,
+        parola,
+        punteggio,
+        bonus: bonusUsati.length > 0 ? bonusUsati : ["No Bonus"],
+        difficolta,
+        timestamp: new Date().toISOString()
+    };
+
+    paroleSalvate.push(nuovaVoce);
+    paroleSalvate.sort((a, b) => b.punteggio - a.punteggio);
+    localStorage.setItem("paroleTop", JSON.stringify(paroleSalvate.slice(0, 50)));
+
+    if (typeof window.sincronizzaParolaTopFirebase === "function") {
+        window.sincronizzaParolaTopFirebase(nuovaVoce);
+    }
 }
 
 function normalizzaClassifica(classifica) {
@@ -1301,11 +1443,12 @@ function generaSezioneClassifica(classifica, livello, etichetta) {
         .slice(0, 10);
 
     const items = top10
-        .map(({ id, punteggioTotale: punti, timestamp, roundSuperati }) => {
+        .map(({ id, giocatore, punteggioTotale: punti, timestamp, roundSuperati }) => {
+            const nome = giocatore ? `<strong>${giocatore}</strong> — ` : "";
             const dataPartita = timestamp ? new Date(timestamp).toLocaleDateString() : "-";
-            const roundTesto = roundSuperati !== undefined ? `round:${roundSuperati}` : "";
+            const roundTesto = roundSuperati !== undefined ? `round: ${roundSuperati}` : "";
             return `<li data-id="${id}" class="classifica-voce" style="cursor:pointer;">
-                <strong>${punti}</strong> punti - ${dataPartita} - ${roundTesto}
+                ${nome}<strong>${punti}</strong> punti - ${dataPartita} - ${roundTesto}
             </li>`;
         })
         .join("");
@@ -1315,16 +1458,54 @@ function generaSezioneClassifica(classifica, livello, etichetta) {
 
 function generaHTMLParoleTop(paroleTop) {
     return paroleTop
-        .map(({ parola, punteggio, bonus }) => {
+        .map(({ parola, punteggio, bonus, giocatore }) => {
             const bonusText = Array.isArray(bonus) ? `(${bonus.join(", ")})` : "No Bonus";
-            return `<li><strong>${parola}</strong> - ${punteggio} punti ${bonusText}</li>`;
+            const nomeText = giocatore ? ` — <em>${giocatore}</em>` : "";
+            return `<li><strong>${parola}</strong> - ${punteggio} punti ${bonusText}${nomeText}</li>`;
         })
         .join("");
 }
 
-function mostraClassifica() {
-    const rawClassifica = JSON.parse(localStorage.getItem("classificaPartite")) || [];
-    const classifica = normalizzaClassifica(rawClassifica);
+function mostraDettaglioPartita(partita) {
+    const container = document.getElementById("dettaglio-partita");
+    if (!container || !partita) return;
+
+    container.innerHTML = `
+        <hr><h4>📋 Dettagli partita</h4>
+        <p><strong>Giocatore:</strong> ${partita.giocatore || "Anonimo"}</p>
+        <p><strong>Punteggio totale:</strong> ${partita.punteggioTotale}</p>
+        <p><strong>Round superati:</strong> ${partita.roundSuperati}</p>
+        <p><strong>Parola migliore:</strong> ${partita.parolaTop} (${partita.puntiTop} punti)</p>
+        <h5>🧩 Dettagli per round:</h5>
+        ${generaHTMLDettagliRound(partita.dettagliRound)}
+    `;
+}
+
+function generaHTMLParoleTop(paroleTop) {
+    return paroleTop
+        .map(({ parola, punteggio, bonus, giocatore }) => {
+            const bonusText = Array.isArray(bonus) ? `(${bonus.join(", ")})` : "No Bonus";
+            const nomeGiocatore = giocatore || "Anonimo";
+            return `<li><strong>${parola}</strong> - ${punteggio} punti ${bonusText} — <em>${nomeGiocatore}</em></li>`;
+        })
+        .join("");
+}
+
+function unisciClassifiche(localeList, remotaList, chiaveId = "id") {
+    const mappa = new Map();
+    [...(localeList || []), ...(remotaList || [])].forEach((item, idx) => {
+        if (!item) return;
+        const key = item[chiaveId] || `${item.giocatore || ""}_${item.parola || item.punteggioTotale}_${item.timestamp || idx}`;
+        if (!mappa.has(key)) {
+            mappa.set(key, item);
+        }
+    });
+    return Array.from(mappa.values());
+}
+
+function renderizzaClassificaConDati(rawClassifica, rawParoleTop) {
+    const classifica = normalizzaClassifica(rawClassifica || []);
+    const paroleTop = [...(rawParoleTop || [])].sort((a, b) => (b.punteggio || 0) - (a.punteggio || 0));
 
     const etichette = {
         facile: "Facile",
@@ -1337,7 +1518,6 @@ function mostraClassifica() {
         .map(livello => generaSezioneClassifica(classifica, livello, etichette[livello]))
         .join("");
 
-    const paroleTop = JSON.parse(localStorage.getItem("paroleTop")) || [];
     html += `<hr><h3>🔠 Top parole</h3><ol id="paroleTop-list">${generaHTMLParoleTop(paroleTop.slice(0, 10))}</ol>`;
 
     if (paroleTop.length > 10) {
@@ -1346,10 +1526,11 @@ function mostraClassifica() {
 
     html += `<div id="dettaglio-partita" style="margin-top:20px;"></div>`;
 
-    document.getElementById("leaderboard-content").innerHTML = html;
-    document.getElementById("leaderboard-modal").style.display = "flex";
+    const contentEl = document.getElementById("leaderboard-content");
+    if (!contentEl) return;
+    contentEl.innerHTML = html;
 
-    document.querySelectorAll(".classifica-voce").forEach(li => {
+    contentEl.querySelectorAll(".classifica-voce").forEach(li => {
         li.addEventListener("click", () => {
             const id = li.getAttribute("data-id");
             const partita = classifica.find(p => String(p.id) === String(id));
@@ -1363,6 +1544,18 @@ function mostraClassifica() {
             document.getElementById("paroleTop-list").innerHTML = generaHTMLParoleTop(paroleTop.slice(0, 50));
             btnPiuParole.style.display = "none";
         });
+    }
+}
+
+function mostraClassifica() {
+    const rawClassifica = JSON.parse(localStorage.getItem("classificaPartite")) || [];
+    const paroleTop = JSON.parse(localStorage.getItem("paroleTop")) || [];
+
+    renderizzaClassificaConDati(rawClassifica, paroleTop);
+    document.getElementById("leaderboard-modal").style.display = "flex";
+
+    if (typeof window.caricaClassificaFirebase === "function") {
+        window.caricaClassificaFirebase();
     }
 }
 
@@ -1380,30 +1573,6 @@ function mostraDettaglioPartita(partita) {
     `;
 }
 
-function salvaParolaAlta(parola, punteggio) {
-    let paroleSalvate = JSON.parse(localStorage.getItem("paroleTop")) || [];
-
-    const bonusUsati = parolaCostruita
-        .map(slot => {
-            if (!slot) return null;
-            const tessera = tessereDisponibili[slot.indiceTessera];
-            if (typeof tessera === "object" && tessera !== null) {
-                if (tessera.tipoBonus === "additivo") return `+${tessera.valore}`;
-                if (tessera.tipoBonus === "moltiplicatore") return `x${tessera.moltiplicatore}`;
-            }
-            return null;
-        })
-        .filter(Boolean);
-
-    paroleSalvate.push({
-        parola,
-        punteggio,
-        bonus: bonusUsati.length > 0 ? bonusUsati : ["No Bonus"]
-    });
-
-    paroleSalvate.sort((a, b) => b.punteggio - a.punteggio);
-    localStorage.setItem("paroleTop", JSON.stringify(paroleSalvate.slice(0, 50)));
-}
 
 function mostraRiepilogoSacchetto() {
     const container = document.getElementById("sacchetto-stats");
@@ -1541,7 +1710,22 @@ function logStatoBonus(punteggio, soglie) {
 }
 
 function registraEventi() {
+    const startNameInput = document.getElementById("start-player-name");
+    if (startNameInput) {
+        startNameInput.addEventListener("input", () => {
+            const val = startNameInput.value.trim();
+            if (val) {
+                localStorage.setItem(STORAGE_NOME_GIOCATORE_KEY, val);
+                startNameInput.classList.remove("input-error");
+                const errorEl = document.getElementById("start-name-error");
+                if (errorEl) errorEl.textContent = "";
+            }
+        });
+    }
+
     document.getElementById("menu-new-game").addEventListener("click", () => {
+        if (!validaNomePrimaDiGiocare()) return;
+
         const statoSalvato = localStorage.getItem("statoPartita");
         if (statoSalvato) {
             document.getElementById("load-game-modal").style.display = "flex";
@@ -1551,12 +1735,15 @@ function registraEventi() {
     });
 
     document.getElementById("menu-load-game").addEventListener("click", () => {
+        if (!validaNomePrimaDiGiocare()) return;
         if (!localStorage.getItem("statoPartita")) return;
+
         mostraAreaDiGioco();
         caricaStatoPartita();
     });
 
     document.getElementById("menu-multiplayer").addEventListener("click", () => {
+        if (!validaNomePrimaDiGiocare()) return;
         document.getElementById("open-online-modal")?.click();
     });
 
@@ -1565,6 +1752,10 @@ function registraEventi() {
     });
 
     document.getElementById("check-word").addEventListener("click", controllaParola);
+    document.getElementById("clear-word").addEventListener("click", (e) => {
+        e.stopPropagation();
+        cancellaTuttaLaParola();
+    });
     document.getElementById("backspace").addEventListener("click", rimuoviUltimaLettera);
     document.getElementById("rimescola").addEventListener("click", rimescolaTessere);
 
@@ -1627,6 +1818,11 @@ function registraEventi() {
         const btn = e.target.closest("button");
         if (!btn || btn.classList.contains("tile")) return;
         playSuonoClick();
+    });
+
+    document.getElementById("restart-game")?.addEventListener("click", () => {
+        document.getElementById("game-over-modal").style.display = "none";
+        mostraSchermataIniziale();
     });
 
     const soundBtn = document.getElementById("toggle-sound");

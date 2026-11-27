@@ -19,17 +19,27 @@
                 <span class="mini-tile">O</span>
             </div>
 
-            <p class="start-subtitle">Sfida te stesso o gioca online con i tuoi amici</p>
+            <div class="start-player-box">
+                <label for="start-player-name"><strong>Nome Giocatore:</strong></label>
+                <input type="text"
+                       id="start-player-name"
+                       class="online-name-input"
+                       maxlength="20"
+                       placeholder="Inserisci il tuo nome..."
+                       required />
+                <small id="start-name-error" class="start-name-error" aria-live="polite"></small>
+            </div>
 
             <div class="start-menu-buttons">
-                <button id="menu-new-game" class="game-button">🎮 Nuova partita</button>
-                <button id="menu-load-game" class="game-button orange-button">💾 Carica partita</button>
-                <button id="menu-multiplayer" class="game-button online-header-btn">🌐 Multiplayer online</button>
-                <button id="menu-leaderboard" class="game-button black-button">🏆 Classifica</button>
+                <div class="start-menu-buttons">
+                    <button id="menu-new-game" class="game-button">🎮 Nuova partita</button>
+                    <button id="menu-load-game" class="game-button orange-button">💾 Carica partita</button>
+                    <button id="menu-multiplayer" class="game-button online-header-btn">🌐 Multiplayer online</button>
+                    <button id="menu-leaderboard" class="game-button black-button">🏆 Classifica</button>
+                </div>
             </div>
         </div>
     </div>
-
     <div id="game-container" class="container" style="display: none;">
         <button id="show-leaderboard" class="game-button orange-button">Classifica</button>
         <button id="toggle-fullscreen" class="game-button fullscreen-btn" title="Attiva o disattiva schermo intero">⛶</button>
@@ -72,6 +82,7 @@
 
         <!-- Controlli principali -->
         <div class="controls">
+            <button id="clear-word" title="Cancella tutta la parola">🗑️</button>
             <button id="backspace" title="Annulla ultima lettera">⌫</button>
             <button id="rimescola" title="Rimescola tessere"></button>
             <button id="check-word" title="Controlla parola">&gt;</button>
@@ -89,250 +100,250 @@
         <div id="formula-live"></div>
     </div>
 
-        <!-- Modale fine partita (single player) -->
-        <div id="game-over-modal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <h2>Partita terminata</h2>
-                <div id="summary"></div>
-                <div class="buttons-container">
-                    <button id="restart-game" class="game-button">Riavvia</button>
+    <!-- Modale fine partita (single player) -->
+    <div id="game-over-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Partita terminata</h2>
+            <div id="summary"></div>
+            <div class="buttons-container">
+                <button id="restart-game" class="game-button">🏠 Menù Principale</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale bonus obiettivo -->
+    <div id="bonus-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>🎉 Obiettivo raggiunto!</h2>
+            <p id="bonus-message"></p>
+            <p>Scegli quali tessere aggiungere al sacchetto?</p>
+
+            <div id="bonus-triplette-container" class="triplette-container">
+                <div class="triplette-group">
+                    <div class="bonus-tile-slot tile"></div>
+                    <div class="bonus-tile-slot tile"></div>
+                    <div class="bonus-tile-slot tile"></div>
+                </div>
+                <div class="triplette-group">
+                    <div class="bonus-tile-slot tile"></div>
+                    <div class="bonus-tile-slot tile"></div>
+                    <div class="bonus-tile-slot tile"></div>
+                </div>
+                <div class="triplette-group">
+                    <div class="bonus-tile-slot tile"></div>
+                    <div class="bonus-tile-slot tile"></div>
+                    <div class="bonus-tile-slot tile"></div>
+                </div>
+            </div>
+
+            <div id="sacchetto-stats" class="sacchetto-stats-container"></div>
+        </div>
+    </div>
+
+    <!-- Modale classifica -->
+    <div id="leaderboard-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Classifica</h2>
+            <div id="leaderboard-content"></div>
+            <div class="buttons-container">
+                <button id="reset-leaderboard" class="game-button black-button">Azzera Classifica</button>
+                <button id="close-leaderboard" class="game-button red-button">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale parole salvate in memoria -->
+    <div id="saved-words-modal" class="modal" style="display: none;">
+        <div class="modal-content saved-words-modal-content">
+            <button id="close-saved-words-modal"
+                    class="red-button close-circle-btn"
+                    aria-label="Chiudi modale">
+                ×
+            </button>
+
+            <h2 id="saved-words-title">Parole salvate</h2>
+            <p id="saved-words-feedback" class="saved-words-feedback"></p>
+            <div id="saved-words-list-container"></div>
+        </div>
+    </div>
+
+    <!-- Modale ripristino partita salvata -->
+    <div id="load-game-modal" class="modal" style="display: none;">
+        <div class="modal-content confirm-modal-content">
+            <h2>💾 Partita salvata trovata</h2>
+            <p>È stata trovata una partita in corso salvata in memoria. Vuoi riprenderla?</p>
+            <div class="buttons-container modal-actions-row">
+                <button id="confirm-load-game" class="game-button">Continua partita</button>
+                <button id="decline-load-game" class="game-button black-button">Nuova partita</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale avviso rimescolo automatico -->
+    <div id="auto-shuffle-modal" class="modal" style="display: none;">
+        <div class="modal-content confirm-modal-content">
+            <h2>🔄 Rimescolo automatico</h2>
+            <p id="auto-shuffle-message"></p>
+            <div class="buttons-container">
+                <button id="close-auto-shuffle-modal" class="game-button orange-button">Ho capito</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale selezione difficoltà -->
+    <div id="difficulty-modal" class="modal" style="display: none;">
+        <div class="modal-content difficulty-modal-content">
+            <button id="chiudi-difficulty-modal"
+                    class="red-button close-circle-btn"
+                    aria-label="Chiudi modale">
+                ×
+            </button>
+
+            <h2>Seleziona la difficoltà</h2>
+
+            <div class="difficolta-grid">
+                <div class="colonna-difficolta">
+                    <button class="game-button" onclick="impostaDifficolta('facile')">Facile</button>
+                    <div class="descrizione-difficolta">
+                        <p>
+                            <strong>Incremento round:</strong> +20<br>
+                            <em>(100 - 120 - 160 - 220...)</em>
+                        </p>
+                        <p>
+                            <strong>Turno bonus:</strong> 5500 + 1500<br>
+                            <em>(5500 - 12500 - 21000...)</em>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="colonna-difficolta">
+                    <button class="game-button orange-button" onclick="impostaDifficolta('medio')">Medio</button>
+                    <div class="descrizione-difficolta">
+                        <p>
+                            <strong>Incremento round:</strong> +25<br>
+                            <em>(100 - 125 - 175 - 250...)</em>
+                        </p>
+                        <p>
+                            <strong>Turno bonus:</strong> 6000 + 2000<br>
+                            <em>(6000 - 14000 - 24000...)</em>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="colonna-difficolta">
+                    <button class="game-button red-button" onclick="impostaDifficolta('difficile')">Difficile</button>
+                    <div class="descrizione-difficolta">
+                        <p>
+                            <strong>Incremento round:</strong> +30<br>
+                            <em>(100 - 130 - 190 - 280...)</em>
+                        </p>
+                        <p>
+                            <strong>Turno bonus:</strong> 7000 + 2500<br>
+                            <em>(7000 - 16500 - 28500...)</em>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="colonna-difficolta">
+                    <button class="game-button black-button" onclick="impostaDifficolta('estremo')">Estrema</button>
+                    <div class="descrizione-difficolta">
+                        <p>
+                            <strong>Incremento round:</strong> +50<br>
+                            <em>(100 - 150 - 250 - 400...)</em>
+                        </p>
+                        <p>
+                            <strong>Turno bonus:</strong> 10000 + 3000<br>
+                            <em>(100000 - 23000 - 36000...)</em>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Modale bonus obiettivo -->
-        <div id="bonus-modal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <h2>🎉 Obiettivo raggiunto!</h2>
-                <p id="bonus-message"></p>
-                <p>Scegli quali tessere aggiungere al sacchetto?</p>
+    <!-- ========================================== -->
+    <!-- MODALI MODALITÀ MULTIPLAYER ONLINE         -->
+    <!-- ========================================== -->
+    <!-- 1. Modale Lobby Online (Nome + Crea stanza + Stanze attive) -->
+    <div id="online-lobby-modal" class="modal" style="display: none;">
+        <div class="modal-content online-modal-content">
+            <button id="close-online-lobby-modal"
+                    class="red-button close-circle-btn"
+                    aria-label="Chiudi modale">
+                ×
+            </button>
 
-                <div id="bonus-triplette-container" class="triplette-container">
-                    <div class="triplette-group">
-                        <div class="bonus-tile-slot tile"></div>
-                        <div class="bonus-tile-slot tile"></div>
-                        <div class="bonus-tile-slot tile"></div>
-                    </div>
-                    <div class="triplette-group">
-                        <div class="bonus-tile-slot tile"></div>
-                        <div class="bonus-tile-slot tile"></div>
-                        <div class="bonus-tile-slot tile"></div>
-                    </div>
-                    <div class="triplette-group">
-                        <div class="bonus-tile-slot tile"></div>
-                        <div class="bonus-tile-slot tile"></div>
-                        <div class="bonus-tile-slot tile"></div>
-                    </div>
-                </div>
+            <h2>🌐 Multigiocatore Online</h2>
 
-                <div id="sacchetto-stats" class="sacchetto-stats-container"></div>
+            <div class="online-player-box">
+                <label for="online-player-name"><strong>Il tuo nome giocatore (obbligatorio):</strong></label>
+                <input type="text"
+                       id="online-player-name"
+                       class="online-name-input"
+                       maxlength="20"
+                       placeholder="Inserisci il tuo nickname..."
+                       required />
+            </div>
+
+            <div class="online-create-bar">
+                <button id="create-online-room" class="game-button">➕ Crea nuova stanza</button>
+            </div>
+
+            <h3>Stanze attive (max 10 giocatori)</h3>
+            <div id="rooms-list" class="online-rooms-list">
+                <p class="info">Caricamento stanze...</p>
             </div>
         </div>
+    </div>
 
-        <!-- Modale classifica -->
-        <div id="leaderboard-modal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <h2>Classifica</h2>
-                <div id="leaderboard-content"></div>
-                <div class="buttons-container">
-                    <button id="reset-leaderboard" class="game-button black-button">Azzera Classifica</button>
-                    <button id="close-leaderboard" class="game-button red-button">Chiudi</button>
-                </div>
+    <!-- 2. Modale Stanza d'Attesa (Elenco giocatori connessi + Avvia partita per host) -->
+    <div id="room-waiting-modal" class="modal" style="display: none;">
+        <div class="modal-content online-modal-content">
+            <h2 id="waiting-room-title">Stanza d'attesa</h2>
+            <p id="waiting-room-subtitle" class="info">In attesa dei giocatori (max 10)...</p>
+
+            <ul id="waiting-players-list" class="online-players-list"></ul>
+
+            <div class="buttons-container modal-actions-row">
+                <button id="start-online-game" class="game-button" style="display: none;">▶️ Avvia partita</button>
+                <button id="leave-online-room" class="game-button red-button">Esci dalla stanza</button>
             </div>
         </div>
+    </div>
 
-        <!-- Modale parole salvate in memoria -->
-        <div id="saved-words-modal" class="modal" style="display: none;">
-            <div class="modal-content saved-words-modal-content">
-                <button id="close-saved-words-modal"
-                        class="red-button close-circle-btn"
-                        aria-label="Chiudi modale">
-                    ×
+    <!-- 3. Modale Intermedia Fine Round -->
+    <div id="round-intermission-modal" class="modal" style="display: none;">
+        <div class="modal-content online-modal-content">
+            <h2 id="intermission-title">Fine Round</h2>
+            <p id="intermission-status" class="info">In attesa che tutti i giocatori completino il round...</p>
+
+            <div id="intermission-players-list" class="online-scores-list"></div>
+
+            <div class="buttons-container">
+                <button id="next-online-round" class="game-button" style="display: none;" disabled>
+                    ⏭️ Passa al round successivo
                 </button>
-
-                <h2 id="saved-words-title">Parole salvate</h2>
-                <p id="saved-words-feedback" class="saved-words-feedback"></p>
-                <div id="saved-words-list-container"></div>
             </div>
         </div>
+    </div>
 
-        <!-- Modale ripristino partita salvata -->
-        <div id="load-game-modal" class="modal" style="display: none;">
-            <div class="modal-content confirm-modal-content">
-                <h2>💾 Partita salvata trovata</h2>
-                <p>È stata trovata una partita in corso salvata in memoria. Vuoi riprenderla?</p>
-                <div class="buttons-container modal-actions-row">
-                    <button id="confirm-load-game" class="game-button">Continua partita</button>
-                    <button id="decline-load-game" class="game-button black-button">Nuova partita</button>
-                </div>
+    <!-- 4. Modale Fine Partita Online + Rivincita -->
+    <div id="online-endgame-modal" class="modal" style="display: none;">
+        <div class="modal-content online-modal-content">
+            <h2>🏆 Partita Online Terminata!</h2>
+            <p id="online-winner-banner" class="online-winner-banner"></p>
+
+            <div id="online-final-standings" class="online-scores-list"></div>
+
+            <div class="buttons-container modal-actions-row">
+                <button id="vote-rematch-btn" class="game-button">🔁 Rivincita (0/0)</button>
+                <button id="exit-online-endgame-btn" class="game-button black-button">Torna al menu</button>
             </div>
         </div>
+    </div>
 
-        <!-- Modale avviso rimescolo automatico -->
-        <div id="auto-shuffle-modal" class="modal" style="display: none;">
-            <div class="modal-content confirm-modal-content">
-                <h2>🔄 Rimescolo automatico</h2>
-                <p id="auto-shuffle-message"></p>
-                <div class="buttons-container">
-                    <button id="close-auto-shuffle-modal" class="game-button orange-button">Ho capito</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modale selezione difficoltà -->
-        <div id="difficulty-modal" class="modal" style="display: none;">
-            <div class="modal-content difficulty-modal-content">
-                <button id="chiudi-difficulty-modal"
-                        class="red-button close-circle-btn"
-                        aria-label="Chiudi modale">
-                    ×
-                </button>
-
-                <h2>Seleziona la difficoltà</h2>
-
-                <div class="difficolta-grid">
-                    <div class="colonna-difficolta">
-                        <button class="game-button" onclick="impostaDifficolta('facile')">Facile</button>
-                        <div class="descrizione-difficolta">
-                            <p>
-                                <strong>Incremento round:</strong> +20<br>
-                                <em>(100 - 120 - 160 - 220...)</em>
-                            </p>
-                            <p>
-                                <strong>Turno bonus:</strong> 5500 + 1500<br>
-                                <em>(5500 - 12500 - 21000...)</em>
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="colonna-difficolta">
-                        <button class="game-button orange-button" onclick="impostaDifficolta('medio')">Medio</button>
-                        <div class="descrizione-difficolta">
-                            <p>
-                                <strong>Incremento round:</strong> +25<br>
-                                <em>(100 - 125 - 175 - 250...)</em>
-                            </p>
-                            <p>
-                                <strong>Turno bonus:</strong> 6000 + 2000<br>
-                                <em>(6000 - 14000 - 24000...)</em>
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="colonna-difficolta">
-                        <button class="game-button red-button" onclick="impostaDifficolta('difficile')">Difficile</button>
-                        <div class="descrizione-difficolta">
-                            <p>
-                                <strong>Incremento round:</strong> +30<br>
-                                <em>(100 - 130 - 190 - 280...)</em>
-                            </p>
-                            <p>
-                                <strong>Turno bonus:</strong> 7000 + 2500<br>
-                                <em>(7000 - 16500 - 28500...)</em>
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="colonna-difficolta">
-                        <button class="game-button black-button" onclick="impostaDifficolta('estremo')">Estrema</button>
-                        <div class="descrizione-difficolta">
-                            <p>
-                                <strong>Incremento round:</strong> +50<br>
-                                <em>(100 - 150 - 250 - 400...)</em>
-                            </p>
-                            <p>
-                                <strong>Turno bonus:</strong> 10000 + 3000<br>
-                                <em>(100000 - 23000 - 36000...)</em>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ========================================== -->
-        <!-- MODALI MODALITÀ MULTIPLAYER ONLINE         -->
-        <!-- ========================================== -->
-        <!-- 1. Modale Lobby Online (Nome + Crea stanza + Stanze attive) -->
-        <div id="online-lobby-modal" class="modal" style="display: none;">
-            <div class="modal-content online-modal-content">
-                <button id="close-online-lobby-modal"
-                        class="red-button close-circle-btn"
-                        aria-label="Chiudi modale">
-                    ×
-                </button>
-
-                <h2>🌐 Multigiocatore Online</h2>
-
-                <div class="online-player-box">
-                    <label for="online-player-name"><strong>Il tuo nome giocatore (obbligatorio):</strong></label>
-                    <input type="text"
-                           id="online-player-name"
-                           class="online-name-input"
-                           maxlength="20"
-                           placeholder="Inserisci il tuo nickname..."
-                           required />
-                </div>
-
-                <div class="online-create-bar">
-                    <button id="create-online-room" class="game-button">➕ Crea nuova stanza</button>
-                </div>
-
-                <h3>Stanze attive (max 10 giocatori)</h3>
-                <div id="rooms-list" class="online-rooms-list">
-                    <p class="info">Caricamento stanze...</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- 2. Modale Stanza d'Attesa (Elenco giocatori connessi + Avvia partita per host) -->
-        <div id="room-waiting-modal" class="modal" style="display: none;">
-            <div class="modal-content online-modal-content">
-                <h2 id="waiting-room-title">Stanza d'attesa</h2>
-                <p id="waiting-room-subtitle" class="info">In attesa dei giocatori (max 10)...</p>
-
-                <ul id="waiting-players-list" class="online-players-list"></ul>
-
-                <div class="buttons-container modal-actions-row">
-                    <button id="start-online-game" class="game-button" style="display: none;">▶️ Avvia partita</button>
-                    <button id="leave-online-room" class="game-button red-button">Esci dalla stanza</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3. Modale Intermedia Fine Round -->
-        <div id="round-intermission-modal" class="modal" style="display: none;">
-            <div class="modal-content online-modal-content">
-                <h2 id="intermission-title">Fine Round</h2>
-                <p id="intermission-status" class="info">In attesa che tutti i giocatori completino il round...</p>
-
-                <div id="intermission-players-list" class="online-scores-list"></div>
-
-                <div class="buttons-container">
-                    <button id="next-online-round" class="game-button" style="display: none;" disabled>
-                        ⏭️ Passa al round successivo
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 4. Modale Fine Partita Online + Rivincita -->
-        <div id="online-endgame-modal" class="modal" style="display: none;">
-            <div class="modal-content online-modal-content">
-                <h2>🏆 Partita Online Terminata!</h2>
-                <p id="online-winner-banner" class="online-winner-banner"></p>
-
-                <div id="online-final-standings" class="online-scores-list"></div>
-
-                <div class="buttons-container modal-actions-row">
-                    <button id="vote-rematch-btn" class="game-button">🔁 Rivincita (0/0)</button>
-                    <button id="exit-online-endgame-btn" class="game-button black-button">Torna al menu</button>
-                </div>
-            </div>
-        </div>
-
-        <script src="scrabble.js"></script>
-        <script src="parole.js"></script>
-        <script type="module" src="multiplayer.js"></script>
+    <script src="scrabble.js"></script>
+    <script src="parole.js"></script>
+    <script type="module" src="multiplayer.js"></script>
 </body>
 </html>

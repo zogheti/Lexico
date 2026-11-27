@@ -6,6 +6,7 @@ import {
     push,
     update,
     get,
+    child,
     onValue,
     runTransaction,
     serverTimestamp,
@@ -13,18 +14,86 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
-    apiKey: "INSERISCI_API_KEY",
-    authDomain: "INSERISCI_AUTH_DOMAIN",
-    databaseURL: "INSERISCI_DATABASE_URL",
-    projectId: "INSERISCI_PROJECT_ID",
-    storageBucket: "INSERISCI_STORAGE_BUCKET",
-    messagingSenderId: "INSERISCI_SENDER_ID",
-    appId: "INSERISCI_APP_ID"
+    apiKey: "AIzaSyD9bxKUB6P6pCocb8JUS36V5kEIW9Zo3wo",
+    authDomain: "lexico-79b03.firebaseapp.com",
+    databaseURL: "https://lexico-79b03-default-rtdb.firebaseio.com",
+    projectId: "lexico-79b03",
+    storageBucket: "lexico-79b03.firebasestorage.app",
+    messagingSenderId: "600833182058",
+    appId: "1:600833182058:web:919de1056c1d560f3abd13"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const dbRef = ref(db);
 
+// ==========================================
+// CLASSIFICA ONLINE (PARTITE & TOP PAROLE)
+// ==========================================
+window.sincronizzaPartitaFirebase = async function (partita) {
+    if (!partita || !partita.id || !partita.difficolta) return;
+    try {
+        await set(ref(db, `leaderboard/partite/${partita.difficolta}/${partita.id}`), partita);
+    } catch (err) {
+        console.warn("⚠️ Errore salvataggio partita su Firebase:", err);
+    }
+};
+
+window.sincronizzaParolaTopFirebase = async function (voceParola) {
+    if (!voceParola || !voceParola.id) return;
+    try {
+        await set(ref(db, `leaderboard/paroleTop/${voceParola.id}`), voceParola);
+    } catch (err) {
+        console.warn("⚠️ Errore salvataggio parola top su Firebase:", err);
+    }
+};
+
+window.caricaClassificaFirebase = async function () {
+    try {
+        const [partiteSnap, paroleSnap] = await Promise.all([
+            get(child(dbRef, "leaderboard/partite")),
+            get(child(dbRef, "leaderboard/paroleTop"))
+        ]);
+
+        const partiteRemote = [];
+        if (partiteSnap.exists()) {
+            const perDifficolta = partiteSnap.val();
+            Object.values(perDifficolta).forEach(mappaPartite => {
+                if (mappaPartite && typeof mappaPartite === "object") {
+                    partiteRemote.push(...Object.values(mappaPartite));
+                }
+            });
+        }
+
+        const paroleRemote = paroleSnap.exists()
+            ? Object.values(paroleSnap.val())
+            : [];
+
+        const partiteLocali = JSON.parse(localStorage.getItem("classificaPartite")) || [];
+        const paroleLocali = JSON.parse(localStorage.getItem("paroleTop")) || [];
+
+        const partiteUnite = typeof unisciClassifiche === "function"
+            ? unisciClassifiche(partiteLocali, partiteRemote, "id")
+                .sort((a, b) => (b.punteggioTotale || 0) - (a.punteggioTotale || 0))
+                .slice(0, 50)
+            : partiteRemote;
+
+        const paroleUnite = typeof unisciClassifiche === "function"
+            ? unisciClassifiche(paroleLocali, paroleRemote, "id")
+            : paroleRemote;
+
+        const modal = document.getElementById("leaderboard-modal");
+        if (modal && modal.style.display !== "none" && typeof renderizzaClassificaConDati === "function") {
+            renderizzaClassificaConDati(partiteUnite, paroleUnite);
+        }
+    } catch (err) {
+        console.warn("⚠️ Impossibile leggere la classifica da Firebase (uso dati locali):", err);
+    }
+};
+
+// ==========================================
+// MULTIPLAYER ONLINE
+// ==========================================
 const MAX_GIOCATORI_STANZA = 10;
 const ROUND_TOTALI = 10;
 const DURATA_ROUND_SEC = 120;
@@ -295,7 +364,6 @@ function sincronizzaInterfacciaStanza() {
     const allFinished = players.length > 0 && players.every(([, p]) => p.roundFinished === true);
 
     if (status === "lobby") {
-        // Mostra modale stanza d'attesa con lista giocatori e bottone "Avvia partita" per l'host
         aggiornaListaGiocatoriAttesa(players, isHost);
     } else if (status === "playing") {
         roundCompletionSubmitted = false;
@@ -345,15 +413,13 @@ async function gestisciScadenzaTimerRound() {
     roundCompletionSubmitted = true;
     fermaTimerRound();
 
-    // Recupera la parola salvata disponibile con punteggio più alto (se presente)
-    const miglioreSalvata = trovaMiglioreParolaSalvataDisponibile();
+    const miglioreSalvata = typeof trovaMiglioreParolaSalvataDisponibile === "function"
+        ? trovaMiglioreParolaSalvataDisponibile()
+        : null;
     const puntiTurno = miglioreSalvata ? miglioreSalvata.punteggio : 0;
 
-    if (!miglioreSalvata) {
-        // Nessuna parola salvata: rimescola tutte le tessere sulla board
-        if (typeof rimescolaTessere === "function") {
-            rimescolaTessere();
-        }
+    if (!miglioreSalvata && typeof rimescolaTessere === "function") {
+        rimescolaTessere();
     }
 
     await completaRoundGiocatore(puntiTurno);
@@ -372,7 +438,6 @@ async function completaRoundGiocatore(puntiOttenutiNelRound) {
         };
     });
 
-    // Se tutti hanno già finito, l'host può far passare a "round_end" o cliccare direttamente "Prossimo round"
     const snap = await get(ref(db, `rooms/${currentRoomId}/players`));
     const allPlayers = Object.values(snap.val() || {});
     if (allPlayers.length > 0 && allPlayers.every(p => p.roundFinished)) {

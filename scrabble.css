@@ -82,6 +82,29 @@ body {
     color: #526477;
 }
 
+.start-player-box {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 16px;
+    text-align: left;
+    background-color: #f1f5f9;
+    padding: 4px 15px;
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+    gap: 5px;
+}
+
+    .start-player-box .online-name-input.input-error {
+        border-color: #d32f2f;
+        box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.2);
+    }
+
+.start-name-error {
+    color: #d32f2f;
+    font-weight: 600;
+    font-size: 13px;
+}
+
 .start-menu-buttons {
     display: flex;
     flex-direction: column;
@@ -417,12 +440,21 @@ body {
             cursor: not-allowed;
         }
 
-#backspace {
-    background: linear-gradient(145deg, #ff5c4d, #e53935);
+#backspace{
+    background: linear-gradient(145deg, #ff9800, #ef6c00);
     color: #fff;
 }
 
     #backspace:hover {
+        background: linear-gradient(145deg, #f57c00, #e65100);
+    }
+
+#clear-word {
+    background: linear-gradient(145deg, #ff5c4d, #e53935);
+    color: #fff;
+}
+
+    #clear-word:hover {
         background: linear-gradient(145deg, #e53935, #c62828);
     }
 
@@ -860,7 +892,7 @@ body {
 }
 
 .online-name-input {
-    padding: 9px 12px;
+    padding: 4px 12px;
     font-size: 15px;
     border: 1px solid #94a3b8;
     border-radius: 8px;
